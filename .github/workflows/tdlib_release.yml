@@ -84,6 +84,19 @@ jobs:
     if: ${{ inputs.build_win_x64 || inputs.build_win_x86 }}
 
     steps:
+      - name: Debug - Print All Inputs (Windows)
+        shell: pwsh
+        run: |
+          Write-Host "=== Actions Inputs Debug (Windows) ===" -ForegroundColor Cyan
+          Write-Host "commit                  = ${{ github.event.inputs.commit }}"
+          Write-Host "build_win_x64           = ${{ inputs.build_win_x64 }}"
+          Write-Host "build_win_x86           = ${{ inputs.build_win_x86 }}"
+          Write-Host "win_x64_json            = ${{ inputs.win_x64_json }}"
+          Write-Host "win_x64_java            = ${{ inputs.win_x64_java }}"
+          Write-Host "win_x64_csharp          = ${{ inputs.win_x64_csharp }}"
+          Write-Host "win_x86_json            = ${{ inputs.win_x86_json }}"
+          Write-Host "====================================="
+
       - name: Set Release Variables
         shell: pwsh
         run: |
@@ -95,12 +108,14 @@ jobs:
             echo "RELEASE_VERSION=$commit" >> $env:GITHUB_ENV
             echo "RELEASE_NAME=tdlib-$commit-windows-${{ matrix.platform.arch }}" >> $env:GITHUB_ENV
           }
+          Write-Host "RELEASE_NAME  = ${{ env.RELEASE_NAME }}"
+          Write-Host "RELEASE_VERSION = ${{ env.RELEASE_VERSION }}"
 
       - name: Install dependencies (vcpkg)
         run: vcpkg install gperf:${{ matrix.platform.arch }}-windows openssl:${{ matrix.platform.arch }}-windows zlib:${{ matrix.platform.arch }}-windows
 
       - name: Checkout TDLib
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: tdlib/td
           ref: ${{ github.event.inputs.commit }}
@@ -153,13 +168,11 @@ jobs:
 
       - name: Upload Windows Artifacts
         if: ${{ always() }}
-        uses: svenstaro/upload-release-action@v2
+        uses: softprops/action-gh-release@v3
         with:
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          tag: tdlib-${{ env.RELEASE_VERSION }}
-          file: ${{ env.RELEASE_NAME }}*.zip
+          tag_name: tdlib-${{ env.RELEASE_VERSION }}
+          files: ${{ env.RELEASE_NAME }}*.zip
           overwrite: true
-          file_glob: true
 
   linux:
     runs-on: ${{ matrix.os }}
@@ -170,6 +183,18 @@ jobs:
     if: ${{ inputs.build_linux_2204 || inputs.build_linux_2004 }}
 
     steps:
+      - name: Debug - Print All Inputs (Linux)
+        run: |
+          echo "=== Actions Inputs Debug (Linux) ==="
+          echo "commit                = ${{ github.event.inputs.commit }}"
+          echo "build_linux_2204      = ${{ inputs.build_linux_2204 }}"
+          echo "build_linux_2004      = ${{ inputs.build_linux_2004 }}"
+          echo "linux_2204_json       = ${{ inputs.linux_2204_json }}"
+          echo "linux_2204_java       = ${{ inputs.linux_2204_java }}"
+          echo "linux_2004_json       = ${{ inputs.linux_2004_json }}"
+          echo "linux_2004_java       = ${{ inputs.linux_2004_java }}"
+          echo "=========================================="
+
       - name: Set Release Variables
         run: |
           COMMIT="${{ github.event.inputs.commit }}"
@@ -180,6 +205,8 @@ jobs:
             echo "RELEASE_VERSION=$COMMIT" >> $GITHUB_ENV
             echo "RELEASE_NAME=tdlib-$COMMIT-${{ matrix.os }}-x86_64" >> $GITHUB_ENV
           fi
+          echo "RELEASE_NAME  = ${{ env.RELEASE_NAME }}"
+          echo "RELEASE_VERSION = ${{ env.RELEASE_VERSION }}"
 
       - name: Set Clang Version
         run: |
@@ -201,7 +228,7 @@ jobs:
           java-version: '8'
 
       - name: Checkout TDLib
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: tdlib/td
           ref: ${{ github.event.inputs.commit }}
@@ -245,10 +272,8 @@ jobs:
 
       - name: Upload Linux Artifacts
         if: ${{ always() }}
-        uses: svenstaro/upload-release-action@v2
+        uses: softprops/action-gh-release@v3        
         with:
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          tag: tdlib-${{ env.RELEASE_VERSION }}
-          file: ${{ env.RELEASE_NAME }}*.tar.gz
+          tag_name: tdlib-${{ env.RELEASE_VERSION }}
+          files: ${{ env.RELEASE_NAME }}*.tar.gz
           overwrite: true
-          file_glob: true
