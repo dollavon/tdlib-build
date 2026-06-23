@@ -80,6 +80,7 @@ jobs:
             target: x64
           - arch: x86
             target: Win32
+      fail-fast: false      # 默认 true：一个 Job 失败后取消其余所有 Job
 
     if: ${{ inputs.build_win_x64 || inputs.build_win_x86 }}
 
@@ -89,11 +90,12 @@ jobs:
         run: |
           Write-Host "=== Actions Inputs Debug (Windows) ===" -ForegroundColor Cyan
           Write-Host "commit                  = ${{ github.event.inputs.commit }}"
+          Write-Host "platform                = ${{ matrix.platform.arch }} / ${{ matrix.platform.target }}"
           Write-Host "build_win_x64           = ${{ inputs.build_win_x64 }}"
+          Write-Host "build_win_x86           = ${{ inputs.build_win_x86 }}"
           Write-Host "win_x64_json            = ${{ inputs.win_x64_json }}"
           Write-Host "win_x64_java            = ${{ inputs.win_x64_java }}"
           Write-Host "win_x64_csharp          = ${{ inputs.win_x64_csharp }}"
-          Write-Host "build_win_x86           = ${{ inputs.build_win_x86 }}"
           Write-Host "win_x86_json            = ${{ inputs.win_x86_json }}"
           Write-Host "====================================="
 
@@ -112,8 +114,16 @@ jobs:
           Write-Host "RELEASE_VERSION = ${{ env.RELEASE_VERSION }}"
 
       - name: Install dependencies (vcpkg)
-        if: ${{ inputs.build_win_x64 || inputs.build_win_x86 }}
+        id: install_deps
+        if: ${{ (matrix.platform.arch == 'x64' && inputs.build_win_x64) || (matrix.platform.arch == 'x86' && inputs.build_win_x86) }}
         run: vcpkg install gperf:${{ matrix.platform.arch }}-windows openssl:${{ matrix.platform.arch }}-windows zlib:${{ matrix.platform.arch }}-windows
+
+      - name: Fail Job if step was skipped
+        if: ${{ steps.install_deps.outcome == 'skipped' }}
+        uses: actions/github-script@v7
+        with:
+          script: |
+            core.setFailed('必要步骤 "Install dependencies (vcpkg)" 被跳过，终止构建')
 
       - name: Checkout TDLib
         uses: actions/checkout@v7
@@ -168,7 +178,7 @@ jobs:
           Compress-Archive $(Resolve-Path tdlib/*) ${{ env.RELEASE_NAME }}-csharp.zip
 
       - name: Upload Windows Artifacts
-        if: ${{ always() }}
+        # if: ${{ always() }}
         uses: softprops/action-gh-release@v3
         with:
           tag_name: tdlib-${{ env.RELEASE_VERSION }}
@@ -188,6 +198,7 @@ jobs:
         run: |
           echo "=== Actions Inputs Debug (Linux) ==="
           echo "commit                = ${{ github.event.inputs.commit }}"
+          echo "platform              = ${{ matrix.os }}"
           echo "build_linux_2204      = ${{ inputs.build_linux_2204 }}"
           echo "build_linux_2004      = ${{ inputs.build_linux_2004 }}"
           echo "linux_2204_json       = ${{ inputs.linux_2204_json }}"
@@ -218,10 +229,18 @@ jobs:
           fi
 
       - name: Install System Dependencies
-        if: ${{ inputs.build_linux_2204 || inputs.build_linux_2004 }}
+        id: install_deps
+        if: ${{ (matrix.os == 'ubuntu-22.04' && inputs.build_linux_2204) || (matrix.os == 'ubuntu-20.04' && inputs.build_linux_2004) }}
         run: |
           sudo apt-get update
           sudo apt-get install -y make git zlib1g-dev libssl-dev gperf php-cli cmake clang-${{ env.CLANG_VERSION }} libc++-${{ env.CLANG_VERSION }}-dev libc++abi-${{ env.CLANG_VERSION }}-dev
+
+      - name: Fail Job if step was skipped
+        if: ${{ steps.install_deps.outcome == 'skipped' }}
+        uses: actions/github-script@v7
+        with:
+          script: |
+            core.setFailed('必要步骤 "Install System Dependencies" 被跳过，终止构建')
 
       - name: Setup Java
         uses: actions/setup-java@v4
@@ -273,7 +292,7 @@ jobs:
           tar -czvf ${{ env.RELEASE_NAME }}-java.tar.gz tdlib/*
 
       - name: Upload Linux Artifacts
-        if: ${{ always() }}
+        # if: ${{ always() }}
         uses: softprops/action-gh-release@v3        
         with:
           tag_name: tdlib-${{ env.RELEASE_VERSION }}
