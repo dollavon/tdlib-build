@@ -181,7 +181,7 @@ jobs:
         with:
           tag_name: tdlib-${{ env.RELEASE_VERSION }}
           files: ${{ env.RELEASE_NAME }}*.zip
-          overwrite: true
+          overwrite_files: true
 
   linux:
     runs-on: ${{ matrix.os }}
@@ -239,7 +239,7 @@ jobs:
             core.setFailed('必要步骤 "Install System Dependencies" 被跳过，终止构建')
 
       - name: Setup Java
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: 'temurin'
           java-version: '8'
@@ -289,8 +289,8 @@ jobs:
 
       - name: Upload Linux Artifacts
         # if: ${{ always() }}
-        uses: softprops/action-gh-release@v3        
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: tdlib-${{ env.RELEASE_VERSION }}
           files: ${{ env.RELEASE_NAME }}*.tar.gz
-          overwrite: true
+          overwrite_files: true
